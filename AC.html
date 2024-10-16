@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>AC-3, AC-4, AC-6 and AC-2001 Algorithm Visualization</title>
+    <link rel="stylesheet" type="text/css" href="styles.css" />
+</head>
+
+<body>
+    <!--
+Q1 = {1, 2, 3};
+Q2 = {1, 2, 3};
+Q3 = {1, 2, 3};
+
+Q1 > Q2;
+Q2 === Q3;
+
+Q1 = {1};
+Q2 = {0, 1, 2, 3};
+Q3 = {0, 1, 2, 3};
+Q4 = {0, 1, 2, 3};
+
+Math.abs(Q1 - Q2) !== 1 && Q1 !== Q2;
+Math.abs(Q1 - Q3) !== 2 && Q1 !== Q3;
+Math.abs(Q1 - Q4) !== 3 && Q1 !== Q4;
+
+Math.abs(Q2 - Q3) !== 1 && Q2 !== Q3;
+Math.abs(Q2 - Q4) !== 2 && Q2 !== Q4;
+
+Math.abs(Q3 - Q4) !== 1 && Q3 !== Q4;
+ -->
+    <textarea id="values">
+Q1 = {1};
+Q2 = {0, 1, 2, 3};
+Q3 = {0, 1, 2, 3};
+Q4 = {0, 1, 2, 3};
+
+Math.abs(Q1 - Q2) !== 1 && Q1 !== Q2;
+Math.abs(Q1 - Q3) !== 2 && Q1 !== Q3;
+Math.abs(Q1 - Q4) !== 3 && Q1 !== Q4;
+
+Math.abs(Q2 - Q3) !== 1 && Q2 !== Q3;
+Math.abs(Q2 - Q4) !== 2 && Q2 !== Q4;
+
+Math.abs(Q3 - Q4) !== 1 && Q3 !== Q4;
+    </textarea><br><br>
+   <button id="ac4">AC-4</button>&nbsp;&nbsp;&nbsp;&nbsp;<br><br>
+    <div id="display"></div>
+    <script>
+
+        function escapeHtml(text) {
+            if (typeof text !== 'string') {
+                console.error('escapeHtml called with non-string:', text);
+                return '';
+            }
+            return text.replaceAll(/[&<>"']/g, function (match) {
+                switch (match) {
+                    case "&": return "&amp;";
+                    case "<": return "&lt;";
+                    case ">": return "&gt;";
+                    case '"': return "&quot;";
+                    case "'": return "&#039;";
+                }
+            });
+        }
+
+
+        document.body.addEventListener("click", function (event) {
+            if (event.target.tagName !== 'BUTTON') {
+                return;
+            }
+            document.getElementById('display').innerHTML = '';
+            let lists = {};
+            let arcs = [];
+            let arcStrings = [];
+            let agenda = [];
+            let fullAgenda = [];
+            let processedArcs = [];
+
+            let constraintsPerVariableAsXi = {}; // Constraints where variable is Xi
+            let constraintsPerVariableAsXj = {}; // Constraints where variable is Xj
+
+            // Store constraint expressions as strings
+            let constraintExpressions = {}; // Store expressions as strings
+
+            let inputText = document.getElementById("values").value;
+            if (typeof inputText !== 'string') {
+                console.error('Input text is not a string:', inputText);
+                alert('Please enter the variables and constraints in the textarea.');
+                return;
+            }
+            inputText = inputText.replaceAll(/\s+/g, '');
+            let statements = inputText.split(';').filter(function (s) { return s.length > 0; });
+            statements.forEach(function (statement) {
+                if (statement.includes('={')) {
+                    let variable = statement.split('={')[0];
+                    let valuesString = statement.split('={')[1];
+                    valuesString = valuesString.substring(0, valuesString.length - 1);
+                    let values = valuesString.split(',').map(function (v) { return Number(v.trim()); });
+                    lists[variable] = values;
+                } else {
+
+                    // Updated operator detection
+                    let operatorMatch = statement.match(/(<==|>==|!==|===|<|>|\+|\-|\*|\/|%|\||&&)/);
+                    if (operatorMatch) {
+                        operator = operatorMatch[0];
+                    } else {
+                        console.error('Invalid operator in statement:', statement);
+                        alert('Invalid operator in statement: ' + statement);
+                        return;
+                    }
+
+                    let new_statement = statement.replaceAll("Math.", "");
+                    let variables = Array.from(new Set(new_statement.match(/[A-Z]\d*/g))).map(v => v);
+
+
+                    if (variables.length < 2) {
+                        alert('Not enough variables:', new_statement);
+                        return;
+                    }
+
+                    let var1 = variables[0];
+                    let var2 = variables[1];
+
+
+                    let inverseOperator = '';
+
+                    arcStrings.push(statement);
+        
+                    // Map constraints
+                    if (!constraintsPerVariableAsXi[var1]) constraintsPerVariableAsXi[var1] = [];
+                    constraintsPerVariableAsXi[var1].push(statement);
+
+                    if (!constraintsPerVariableAsXj[var2]) constraintsPerVariableAsXj[var2] = [];
+                    constraintsPerVariableAsXj[var2].push(statement);
+
+
+                    if (operator === '<') inverseOperator = '>';
+                    else if (operator === '>') inverseOperator = '<';
+                    else inverseOperator = operator;
+
+                    // Store reverse constraints
+                    statement = statement.replaceAll(operator, inverseOperator);
+                    statement = statement.replaceAll(var1, "$");
+                    statement = statement.replaceAll(var2, var1);
+                    statement = statement.replaceAll("$", var2);
+                
+                    arcStrings.push(statement);
+ 
+                    
+                    // Similarly for reverse constraints
+                    if (!constraintsPerVariableAsXi[var2]) constraintsPerVariableAsXi[var2] = [];
+                    constraintsPerVariableAsXi[var2].push(statement);
+                    
+                    if (!constraintsPerVariableAsXj[var1]) constraintsPerVariableAsXj[var1] = [];
+                    constraintsPerVariableAsXj[var1].push(statement);
+ 
+
+                }
+            });
+  
+            agenda.push(...arcStrings);
+            fullAgenda = [...agenda];
+
+            let output = '<div class="flex-container">';
+            output += '<div>';
+            output += '<strong>Initial Domains:</strong><br>';
+            for (let variable in lists) {
+                output += variable + ' = {' + lists[variable].join(',') + '};<br>';
+            }
+            output += '</div>';
+            output += '<div>';
+            output += '<strong>Constraints:</strong><br>';
+            arcStrings.forEach(function (item) {
+                output += escapeHtml(item);
+                output += ';<br>';
+            });
+
+
+            output += '</div></div><hr>';
+
+            document.getElementById('display').innerHTML += output;
+
+            const start = performance.now();
+            if (event.target.id === 'ac4') {
+                document.getElementById('display').innerHTML += "<h2>AC-4 Algorithm Execution</h2>";
+                AC4(start, constraintsPerVariableAsXi, constraintsPerVariableAsXj, lists);
+            }
+
+        });
+
+        function AC4(start, constraintsPerVariableAsXi, constraintsPerVariableAsXj, lists) {
+            let stepsOutput = "";
+            let supports = {}; // supports[Xi][vi][constraint] = Set of supported vj values in Xj
+            let counters = {}; // counters[Xi][vi] = Number of constraints that have at least one support
+            let queue = []; // Queue of variable-value pairs to be reconsidered
+
+            // Initialization
+            stepsOutput += "<div class='step-header'>Initialization</div>";
+
+            // Step 1: Initialize supports and counters for each variable and its domain values
+            for (let Xi in constraintsPerVariableAsXi) {
+                if (!supports[Xi]) supports[Xi] = {};
+                if (!counters[Xi]) counters[Xi] = {};
+
+                for (let vi of lists[Xi]) {
+                    supports[Xi][vi] = {}; // Initialize constraints for each vi
+                    counters[Xi][vi] = 0;   // Initialize counter
+                }
+
+                // Step 2: Process each constraint where Xi is involved as the first variable
+                for (let constraint of constraintsPerVariableAsXi[Xi]) {
+                    stepsOutput += `<div class='section-title'>Processing constraint: ${escapeHtml(constraint)}</div>`;
+
+                    let new_statement = constraint.replaceAll("Math.", "");
+                    let variables = Array.from(new_statement.match(/[A-Z]\d*/g));
+                    if (!variables || variables.length < 2) {
+                        alert(`Not enough variables in constraint: ${new_statement}`);
+                        return;
+                    }
+
+                    let Xj = variables[1];
+
+                    for (let vi of lists[Xi]) {
+                        if (!supports[Xi][vi][constraint]) {
+                            supports[Xi][vi][constraint] = new Set();
+                        }
+
+                        for (let vj of lists[Xj]) {
+
+                            // Replace variable names with their current values for evaluation
+                            let expression = constraint.replaceAll(Xi, vi).replaceAll(Xj, vj);
+                            console.log(expression, eval(expression));
+                            
+                            if (eval(expression)) {
+                                supports[Xi][vi][constraint].add(vj);
+                            }
+                        }
+
+                        // If at least one support exists for this constraint, increment counter
+                        if (supports[Xi][vi][constraint].size > 0) {
+                            counters[Xi][vi]++;
+                        } else {
+                            // No support for this constraint, enqueue for removal
+                            queue.push({ Xi: Xi, vi: vi });
+                            stepsOutput += `<div class='domain-changed'>${Xi}:${vi} has no supports for constraint "${constraint}" and is added to queue for removal.</div>`;
+                        }
+                    }
+                }
+            }
+
+            // Display supports after initialization
+            stepsOutput += "<div class='section-title'>Supports After Initialization:</div>";
+            for (let Xi in supports) {
+                for (let vi in supports[Xi]) {
+                    let supportedConstraints = Object.keys(supports[Xi][vi]).filter(constraint => supports[Xi][vi][constraint].size > 0);
+                    stepsOutput += `<strong>${Xi}:${vi}:</strong> Supported by [${supportedConstraints.join(", ")}]<br>`;
+                }
+            }
+
+            // Display counters after initialization
+            stepsOutput += "<div class='section-title'>Counters After Initialization:</div>";
+            for (let Xi in counters) {
+                for (let vi in counters[Xi]) {
+                    stepsOutput += `${Xi}:${vi} has ${counters[Xi][vi]} supports<br>`;
+                }
+            }
+
+            // Step 3: Process the queue
+            while (queue.length > 0) {
+                let { Xi, vi } = queue.shift();
+              
+                
+                stepsOutput += `<div class='section-title'>Removing unsupported value: ${Xi}=${vi}</div>`;
+
+                // Remove vi from the domain of Xi
+                let index = lists[Xi].indexOf(Number(vi));
+                if (index !== -1) {
+                    lists[Xi].splice(index, 1);
+                    stepsOutput += `Removed ${vi} from domain of ${Xi}<br>`;
+                }
+
+                // For each constraint where Xi is involved as Xj (second variable)
+                if (constraintsPerVariableAsXj[Xi]) {
+                    for (let relatedConstraint of constraintsPerVariableAsXj[Xi]) {
+                        // Extract Xk from the constraint (the first variable)
+                        let new_statement = relatedConstraint.replaceAll("Math.", "");
+                        let variables = Array.from(new_statement.match(/[A-Z]\d*/g));
+                        if (!variables || variables.length < 2) {
+                            alert(`Not enough variables in relatedConstraint: ${relatedConstraint}`);
+                            return;
+                        }
+                  
+                        let Xk = variables[0];
+
+                        for (let vk of lists[Xk]) { // Clone the array to prevent issues during iteration
+                
+                            if (supports[Xk][vk][relatedConstraint] && supports[Xk][vk][relatedConstraint].has(Number(vi))) {
+                                supports[Xk][vk][relatedConstraint].delete(Number(vi));
+                                stepsOutput += `Removed support ${Xi}=${vi} from ${Xk}:${vk} for constraint "${relatedConstraint}"<br>`;
+
+                                // If no more supports exist for this constraint, decrement counter
+                                if (supports[Xk][vk][relatedConstraint].size === 0) {
+                                    counters[Xk][vk] = 0;
+                                    stepsOutput += `Decremented counter for ${Xk}:${vk} to ${counters[Xk][vk]}<br>`;
+
+                                    // If no supports left across all constraints, enqueue for removal
+                                    if (counters[Xk][vk] === 0) {
+                                        queue.push({ Xi: Xk, vi: vk});
+                                        stepsOutput += `Added ${Xk}:${vk} to queue due to zero supports.<br>`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Display final domains after AC-4
+            stepsOutput += "<div class='step-header'>Final Domains After AC-4</div>";
+            for (let variable in lists) {
+                stepsOutput += `${variable} = {${lists[variable].join(', ')}};<br>`;
+            }
+
+            const end = performance.now();
+            stepsOutput += `<hr><strong>Execution time:</strong> ${(end - start).toFixed(2)} ms<br>`;
+            document.getElementById('display').innerHTML += stepsOutput;
+        }
+
+
+    </script>
+</body>
+
+</html>
