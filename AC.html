@@ -294,18 +294,17 @@ Math.abs(Q3 - Q4) !== 1 && Q3 !== Q4;
                   
                         let Xk = variables[0];
 
-                        for (let vk of lists[Xk]) { // Clone the array to prevent issues during iteration
+                        for (let vk of lists[Xk]) { 
                 
                             if (supports[Xk][vk][relatedConstraint] && supports[Xk][vk][relatedConstraint].has(Number(vi))) {
                                 supports[Xk][vk][relatedConstraint].delete(Number(vi));
                                 stepsOutput += `Removed support ${Xi}=${vi} from ${Xk}:${vk} for constraint "${relatedConstraint}"<br>`;
 
-                                // If no more supports exist for this constraint, decrement counter
                                 if (supports[Xk][vk][relatedConstraint].size === 0) {
                                     counters[Xk][vk] = 0;
-                                    stepsOutput += `Decremented counter for ${Xk}:${vk} to ${counters[Xk][vk]}<br>`;
+                                    stepsOutput += `Decremented couter for ${Xk}:${vk} to ${counters[Xk][vk]}<br>`;
 
-                                    // If no supports left across all constraints, enqueue for removal
+                                    // no suppport, enqueue for the removal
                                     if (counters[Xk][vk] === 0) {
                                         queue.push({ Xi: Xk, vi: vk});
                                         stepsOutput += `Added ${Xk}:${vk} to queue due to zero supports.<br>`;
