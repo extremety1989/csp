@@ -471,12 +471,14 @@ Math.abs(Q3 - Q4) !== 1 && Q3 !== Q4;
                     if (!supports[Xi][vi][arcStr]) {
                         supports[Xi][vi][arcStr] = new Set();
                     }
-                    for (let vj of lists[Xj].sort((a,b) => a-b)) { // Sort domain
+                    for (let vj of lists[Xj].sort((a,b) => a-b)) { 
+
+                        //console.log({ Xi: Xi, vi: vi, Xj: Xj, vj: vj });
                         let expressionToEvaluate = arcStr.replaceAll(Xi, vi).replaceAll(Xj, vj);
 
                         if (eval(expressionToEvaluate)) {
-                            supports[Xi][vi][arcStr] = vj; // Store single value
-                            break; // Stop at first support
+                            supports[Xi][vi][arcStr] = vj;
+                            break; 
                         }
                     }
 
